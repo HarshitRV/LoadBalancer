@@ -7,7 +7,8 @@ import { createServer } from "http";
 /**
  * Utils
  */
-import { getLoadStats } from "./utils/serverCom.js";
+import { getLoadStats } from "./servercom/getLoadStats.js";
+import { isAllServerBusy } from "./servercom/isAllServerBusy.js";
 import catchAsync from "./utils/catchAsyncErr.js";
 
 /**
@@ -29,7 +30,8 @@ const weights: number[] = servers.map((server) => server.weight);
 let currentServer = 0;
 
 const changeServer = (server: Server) => {
-	server.weight = 0;
+	// reset current server weight and move on to next server
+	server.weight = weights[currentServer];
 	currentServer = (currentServer + 1) % servers.length;
 };
 
@@ -42,6 +44,7 @@ app.route("/").get(
 
 		// get load stats from server
 		const load = await getLoadStats(server.url);
+
 		if (load === -1) {
 			console.log(`server at ${server.url} is down 🔻`);
 			changeServer(server);
@@ -52,7 +55,8 @@ app.route("/").get(
 			console.log(`server at ${server.url} is at max load 🔻`);
 			// if one server is at max load, then check if we have any server available
 			// if none of the server are available, then response with 503 service unavailable
-			if (servers.every((server) => server.weight === 0)) {
+			if (await isAllServerBusy(servers)) {
+				console.log("All servers are at max load 🔻");
 				return res.status(503).send({
 					msg: "All servers are at max load, please try again later 🚧",
 				});
@@ -64,7 +68,7 @@ app.route("/").get(
 		res.redirect(server.url);
 		server.weight--;
 		if (server.weight === 0) {
-			console.log(currentServer);
+			console.log(`Resetting weight for ${currentServer} 🔄 and moving on to next server`);
 			server.weight = weights[currentServer];
 			currentServer = (currentServer + 1) % servers.length;
 		}
