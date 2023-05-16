@@ -1,8 +1,6 @@
 import express, { Express, Request, Response } from "express";
 import { createServer } from "http";
 
-import { sayHello } from "./utils/utils.js";
-
 
 const app: Express = express();
 
@@ -18,7 +16,7 @@ const weights = servers.map((server) => server.weight);
 let currentServer = 0;
 
 // weighted round-robin load balancing algorithm
-app.route("/").get((req, res) => {
+app.route("/").get((req: Request, res: Response) => {
 	console.log(
 		`request served by ${servers[currentServer].url} with pid ${process.pid} ⚙️`
 	);
