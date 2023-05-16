@@ -24,7 +24,7 @@ const servers: ServerArray = [
 	{ url: "http://localhost:3002", weight: 2 },
 	{ url: "http://localhost:3003", weight: 1 },
 ];
-const weights = servers.map((server) => server.weight);
+const weights: number[] = servers.map((server) => server.weight);
 
 let currentServer = 0;
 
@@ -33,10 +33,11 @@ const changeServer = (server: Server) => {
 	currentServer = (currentServer + 1) % servers.length;
 };
 
-// Weighted round-robin load balancing 
+// Weighted round-robin load balancing
 app.route("/").get(
 	catchAsync(async (req: Request, res: Response) => {
 		console.log(`request served by ${servers[currentServer].url} ⚙️`);
+		console.log(servers);
 		const server: Server = servers[currentServer];
 
 		// get load stats from server
@@ -49,6 +50,13 @@ app.route("/").get(
 		// if load.activeUsers === load.maxLoad, then try next server
 		else if (load.activeUsers === load.maxLoad) {
 			console.log(`server at ${server.url} is at max load 🔻`);
+			// if one server is at max load, then check if we have any server available
+			// if none of the server are available, then response with 503 service unavailable
+			if (servers.every((server) => server.weight === 0)) {
+				return res.status(503).send({
+					msg: "All servers are at max load, please try again later 🚧",
+				});
+			}
 			changeServer(server);
 			return res.redirect("/");
 		}
@@ -62,7 +70,6 @@ app.route("/").get(
 		}
 	})
 );
-
 
 /**
  * Health check route.
